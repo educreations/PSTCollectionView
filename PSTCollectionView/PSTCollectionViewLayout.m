@@ -277,7 +277,7 @@
     return nil;
 }
 
-- (PSTCollectionViewLayoutAttributes *)layoutAttributesForDecorationViewWithReuseIdentifier:(NSString*)identifier atIndexPath:(NSIndexPath *)indexPath {
+- (PSTCollectionViewLayoutAttributes *)layoutAttributesForDecorationViewOfKind:(NSString*)kind atIndexPath:(NSIndexPath *)indexPath {
     return nil;
 }
 
@@ -298,17 +298,18 @@
 
     for (PSTCollectionReusableView *view in [[_collectionView visibleViewsDict] objectEnumerator]) {
         PSTCollectionViewLayoutAttributes *attr = [view.layoutAttributes copy];
+        if (attr.isCell) {
 
-        PSTCollectionViewData* oldModel = update[@"oldModel"];
-        NSInteger index = [oldModel globalIndexForItemAtIndexPath:[attr indexPath]];
+            NSInteger index = [update[@"oldModel"] globalIndexForItemAtIndexPath:[attr indexPath]];
 
-        if(index != NSNotFound) {
-            index = [update[@"oldToNewIndexMap"][index] intValue];
             if(index != NSNotFound) {
-                [attr setIndexPath:[update[@"newModel"] indexPathForItemAtGlobalIndex:index]];
-                _initialAnimationLayoutAttributesDict[[PSTCollectionViewItemKey collectionItemKeyForLayoutAttributes:attr]] = attr;
+                index = [update[@"oldToNewIndexMap"][index] intValue];
+                
+                [attr setIndexPath:[attr indexPath]];
+                
             }
         }
+        _initialAnimationLayoutAttributesDict[[PSTCollectionViewItemKey collectionItemKeyForLayoutAttributes:attr]] = attr;
     }
 
     PSTCollectionViewData* collectionViewData = [_collectionView collectionViewData];
@@ -316,14 +317,16 @@
     CGRect bounds = [_collectionView visibleBoundRects];
 
     for (PSTCollectionViewLayoutAttributes* attr in [collectionViewData layoutAttributesForElementsInRect:bounds]) {
-        NSInteger index = [collectionViewData globalIndexForItemAtIndexPath:attr.indexPath];
+        if (attr.isCell) {
+            NSInteger index = [collectionViewData globalIndexForItemAtIndexPath:attr.indexPath];
 
-        index = [update[@"newToOldIndexMap"][index] intValue];
-        if(index != NSNotFound) {
-            PSTCollectionViewLayoutAttributes* finalAttrs = [attr copy];
-            [finalAttrs setIndexPath:[update[@"oldModel"] indexPathForItemAtGlobalIndex:index]];
-            [finalAttrs setAlpha:0];
-            _finalAnimationLayoutAttributesDict[[PSTCollectionViewItemKey collectionItemKeyForLayoutAttributes:finalAttrs]] = finalAttrs;
+            index = [update[@"newToOldIndexMap"][index] intValue];
+            if(index != NSNotFound) {
+                PSTCollectionViewLayoutAttributes* finalAttrs = [attr copy];
+                [finalAttrs setIndexPath:[update[@"oldModel"] indexPathForItemAtGlobalIndex:index]];
+                [finalAttrs setAlpha:0];
+                _finalAnimationLayoutAttributesDict[[PSTCollectionViewItemKey collectionItemKeyForLayoutAttributes:finalAttrs]] = finalAttrs;
+            }
         }
     }
 
@@ -388,7 +391,14 @@
 }
 
 - (PSTCollectionViewLayoutAttributes *)initialLayoutAttributesForInsertedSupplementaryElementOfKind:(NSString *)elementKind atIndexPath:(NSIndexPath *)elementIndexPath {
-    return nil;
+    PSTCollectionViewLayoutAttributes* attrs = _initialAnimationLayoutAttributesDict[[PSTCollectionViewItemKey collectionItemKeyForCellWithIndexPath:elementIndexPath]];
+
+    if([_insertedSectionsSet containsIndex:[elementIndexPath section]]) {
+        attrs = [attrs copy];
+        [attrs setAlpha:0];
+    }
+    return attrs;
+
 }
 
 - (PSTCollectionViewLayoutAttributes *)finalLayoutAttributesForDeletedSupplementaryElementOfKind:(NSString *)elementKind atIndexPath:(NSIndexPath *)elementIndexPath {
@@ -406,11 +416,11 @@
 #pragma mark - Registering Decoration Views
 
 - (void)registerClass:(Class)viewClass forDecorationViewOfKind:(NSString *)kind {
-    [_decorationViewClassDict setObject:viewClass forKey:kind];
+    _decorationViewClassDict[kind] = viewClass;
 }
 
 - (void)registerNib:(UINib *)nib forDecorationViewOfKind:(NSString *)kind {
-    [_decorationViewNibDict setObject:nib forKey:kind];
+    _decorationViewNibDict[kind] = nib;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
