@@ -14,6 +14,7 @@
     struct {
         unsigned int inUpdateAnimation : 1;
     }_reusableViewFlags;
+    char filler[50]; // [HACK] Our class needs to be larged than Apple's class for the superclass change to work
 }
 @property (nonatomic, copy) NSString *reuseIdentifier;
 @property (nonatomic, unsafe_unretained) PSTCollectionView *collectionView;
@@ -33,6 +34,7 @@
 
 - (id)initWithCoder:(NSCoder *)aDecoder {
     if ((self = [super initWithCoder:aDecoder])) {
+        self.reuseIdentifier = [aDecoder decodeObjectForKey:@"UIReuseIdentifier"];
     }
     return self;
 }
@@ -118,8 +120,8 @@
 
 - (id)initWithCoder:(NSCoder *)aDecoder {
     if ((self = [super initWithCoder:aDecoder])) {
-        if ([[self subviews] count] > 0) {
-            _contentView = [self subviews][0];
+        if (self.subviews.count > 0) {
+            _contentView = self.subviews[0];
         }else {
             _contentView = [[UIView alloc] initWithFrame:self.bounds];
             _contentView.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
@@ -166,7 +168,7 @@
         // Ignore the events if view wants to
         if (!((UIView *)view).isUserInteractionEnabled &&
                 [view respondsToSelector:@selector(setHighlighted:)] &&
-                ![view isKindOfClass:[UIButton class]]) {
+                ![view isKindOfClass:UIButton.class]) {
             [view setHighlighted:highlighted];
 
         }

@@ -15,6 +15,7 @@
         unsigned int clearsSelectionOnViewWillAppear : 1;
         unsigned int appearsFirstTime : 1; // PST exension!
     }_collectionViewControllerFlags;
+    char filler[100]; // [HACK] Our class needs to be larged than Apple's class for the superclass change to work
 }
 @property (nonatomic, strong) PSTCollectionViewLayout *layout;
 @end
@@ -50,7 +51,7 @@
     [super loadView];
 
     // if this is restored from IB, we don't have plain main view.
-    if ([self.view isKindOfClass:[PSTCollectionView class]]) {
+    if ([self.view isKindOfClass:PSTCollectionView.class]) {
         _collectionView = (PSTCollectionView *)self.view;
         self.view = [[UIView alloc] initWithFrame:self.view.bounds];
         self.collectionView.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
@@ -104,9 +105,16 @@
 
 - (PSTCollectionView *)collectionView {
     if (!_collectionView) {
-        _collectionView = [[PSTCollectionView alloc] initWithFrame:[[UIScreen mainScreen] bounds] collectionViewLayout:self.layout];
+        _collectionView = [[PSTCollectionView alloc] initWithFrame:UIScreen.mainScreen.bounds collectionViewLayout:self.layout];
         _collectionView.delegate = self;
         _collectionView.dataSource = self;
+
+        // If the collection view isn't the main view, add it.
+        if (self.isViewLoaded && self.view != self.collectionView) {
+            [self.view addSubview:self.collectionView];
+            self.collectionView.frame = self.view.bounds;
+            self.collectionView.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
+        }
     }
     return _collectionView;
 }
